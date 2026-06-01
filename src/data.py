@@ -23,7 +23,8 @@ def build_transforms(image_size: int = 32, train: bool = True):
     ])
 
 
-def get_dataloaders(data_dir: str, dataset_name: str = "cifar10", image_size: int = 32, batch_size: int = 64, num_workers: int = 2, image_folder: Optional[str] = None):
+def get_dataloaders(data_dir: str, name: Optional[str] = None, dataset_name: str = "cifar10", image_size: int = 32, batch_size: int = 64, num_workers: int = 2, image_folder: Optional[str] = None):
+    dataset_name = name or dataset_name
     root = Path(data_dir)
     if image_folder:
         dataset = datasets.ImageFolder(image_folder, transform=build_transforms(image_size, train=True))
