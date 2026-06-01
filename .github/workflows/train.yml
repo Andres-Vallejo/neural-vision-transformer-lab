@@ -1,0 +1,54 @@
+name: Train vision models
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model to train
+        required: true
+        default: cnn
+        type: choice
+        options:
+          - cnn
+          - autoencoder
+          - vit
+      epochs:
+        description: Number of epochs
+        required: true
+        default: '1'
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'configs/**'
+      - 'requirements.txt'
+      - '.github/workflows/train.yml'
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Train selected model
+        run: |
+          MODEL="${{ github.event.inputs.model || 'cnn' }}"
+          EPOCHS="${{ github.event.inputs.epochs || '1' }}"
+          python src/train.py --model "$MODEL" --epochs "$EPOCHS"
+      - name: Evaluate classifier
+        if: ${{ github.event.inputs.model != 'autoencoder' }}
+        run: |
+          MODEL="${{ github.event.inputs.model || 'cnn' }}"
+          python src/evaluate.py --model "$MODEL"
+      - name: Upload experiment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vision-training-artifacts
+          path: outputs/
