@@ -29,13 +29,13 @@ Image analytics is one of the strongest ways to demonstrate deep learning skill 
 
 ```bash
 pip install -r requirements.txt
-python src/train.py --model cnn --epochs 3
-python src/train.py --model autoencoder --epochs 3
-python src/train.py --model vit --epochs 3
+python src/train.py --model cnn --epochs 25
+python src/train.py --model autoencoder --epochs 25
+python src/train.py --model vit --epochs 25
 python src/evaluate.py --model vit
 ```
 
-By default the code downloads CIFAR10 through torchvision, so it works without manually collecting images. The official training set is split into train/validation and evaluation runs on the official test split. You can also point the loader to an ImageFolder dataset.
+By default the code downloads CIFAR10 through torchvision, so it works without manually collecting images. The official training set is split into train/validation and evaluation runs on the official test split. Training uses Adam, learning-rate reduction on plateaus, and early stopping when validation accuracy stops improving.
 
 ## Skills Demonstrated
 

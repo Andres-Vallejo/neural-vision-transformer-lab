@@ -57,6 +57,12 @@ def validate(model, loader, criterion, device, autoencoder=False):
     return total_loss / len(loader.dataset), correct / total if total else None
 
 
+def improved(metric: float, best_metric: float, min_delta: float, mode: str) -> bool:
+    if mode == "max":
+        return metric > best_metric + min_delta
+    return metric < best_metric - min_delta
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/default.yaml")
@@ -72,19 +78,39 @@ def main():
     model = build_model(args.model, model_cfg, num_classes=len(class_names)).to(device)
     autoencoder = args.model == "autoencoder"
     criterion = nn.MSELoss() if autoencoder else nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=cfg["training"]["learning_rate"], weight_decay=cfg["training"]["weight_decay"])
+    optimizer = optim.Adam(model.parameters(), lr=cfg["training"]["learning_rate"], weight_decay=cfg["training"]["weight_decay"])
+    monitor = cfg["training"]["early_stopping"]["monitor"]
+    monitor_mode = "min" if autoencoder or monitor.endswith("loss") else "max"
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode=monitor_mode,
+        factor=cfg["training"]["scheduler"]["factor"],
+        patience=cfg["training"]["scheduler"]["patience"],
+    )
     epochs = args.epochs or cfg["training"]["epochs"]
+    patience = cfg["training"]["early_stopping"]["patience"]
+    min_delta = cfg["training"]["early_stopping"]["min_delta"]
 
     ckpt_dir = Path(cfg["outputs"]["checkpoint_dir"])
     ckpt_dir.mkdir(parents=True, exist_ok=True)
-    best_loss = float("inf")
+    best_metric = -float("inf") if monitor_mode == "max" else float("inf")
+    epochs_without_improvement = 0
     for epoch in range(1, epochs + 1):
         train_loss, train_acc = run_epoch(model, train_loader, criterion, optimizer, device, autoencoder)
         val_loss, val_acc = validate(model, val_loader, criterion, device, autoencoder)
-        print({"epoch": epoch, "train_loss": round(train_loss, 4), "val_loss": round(val_loss, 4), "train_acc": train_acc, "val_acc": val_acc})
-        if val_loss < best_loss:
-            best_loss = val_loss
-            torch.save({"model_state": model.state_dict(), "class_names": class_names, "model": args.model, "config": cfg}, ckpt_dir / f"{args.model}_best.pt")
+        metric = val_loss if autoencoder or monitor == "val_loss" else val_acc
+        scheduler.step(metric)
+        current_lr = optimizer.param_groups[0]["lr"]
+        print({"epoch": epoch, "train_loss": round(train_loss, 4), "val_loss": round(val_loss, 4), "train_acc": train_acc, "val_acc": val_acc, "lr": current_lr})
+        if improved(metric, best_metric, min_delta, monitor_mode):
+            best_metric = metric
+            epochs_without_improvement = 0
+            torch.save({"model_state": model.state_dict(), "class_names": class_names, "model": args.model, "config": cfg, "best_metric": best_metric, "best_epoch": epoch}, ckpt_dir / f"{args.model}_best.pt")
+        else:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= patience:
+                print({"early_stopping": True, "epoch": epoch, "best_metric": best_metric, "monitor": monitor})
+                break
 
 
 if __name__ == "__main__":

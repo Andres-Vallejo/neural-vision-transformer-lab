@@ -15,7 +15,7 @@ on:
       epochs:
         description: Number of epochs
         required: true
-        default: '3'
+        default: '25'
   push:
     branches: [ main ]
     paths:
@@ -27,7 +27,7 @@ on:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,7 +40,7 @@ jobs:
       - name: Train selected model
         run: |
           MODEL="${{ github.event.inputs.model || 'cnn' }}"
-          EPOCHS="${{ github.event.inputs.epochs || '3' }}"
+          EPOCHS="${{ github.event.inputs.epochs || '25' }}"
           python src/train.py --model "$MODEL" --epochs "$EPOCHS"
       - name: Evaluate classifier
         if: ${{ github.event.inputs.model != 'autoencoder' }}
