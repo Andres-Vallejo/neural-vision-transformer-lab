@@ -1,0 +1,27 @@
+seed: 42
+dataset:
+  name: cifar10
+  data_dir: data/raw
+  image_size: 32
+  batch_size: 64
+  num_workers: 2
+training:
+  epochs: 5
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  device: auto
+models:
+  cnn:
+    num_classes: 10
+  autoencoder:
+    latent_dim: 128
+  vit:
+    patch_size: 4
+    embed_dim: 128
+    depth: 4
+    num_heads: 4
+    mlp_dim: 256
+    dropout: 0.1
+outputs:
+  checkpoint_dir: outputs/checkpoints
+  metrics_dir: outputs/metrics
