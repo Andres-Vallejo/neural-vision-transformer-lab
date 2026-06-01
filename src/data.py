@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 
 CIFAR10_CLASSES = ["airplane", "automobile", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck"]
@@ -23,22 +23,35 @@ def build_transforms(image_size: int = 32, train: bool = True):
     ])
 
 
-def get_dataloaders(data_dir: str, name: Optional[str] = None, dataset_name: str = "cifar10", image_size: int = 32, batch_size: int = 64, num_workers: int = 2, image_folder: Optional[str] = None):
+def get_dataloaders(data_dir: str, name: Optional[str] = None, dataset_name: str = "cifar10", image_size: int = 32, batch_size: int = 64, num_workers: int = 2, image_folder: Optional[str] = None, val_split: float = 0.1):
     dataset_name = name or dataset_name
     root = Path(data_dir)
     if image_folder:
-        dataset = datasets.ImageFolder(image_folder, transform=build_transforms(image_size, train=True))
-        val_size = max(1, int(0.2 * len(dataset)))
-        train_size = len(dataset) - val_size
-        train_ds, val_ds = random_split(dataset, [train_size, val_size])
-        class_names = dataset.classes
+        train_dataset = datasets.ImageFolder(image_folder, transform=build_transforms(image_size, train=True))
+        eval_dataset = datasets.ImageFolder(image_folder, transform=build_transforms(image_size, train=False))
+        val_size = max(1, int(val_split * len(train_dataset)))
+        indices = torch.randperm(len(train_dataset), generator=torch.Generator().manual_seed(42)).tolist()
+        val_indices = indices[:val_size]
+        train_indices = indices[val_size:]
+        train_ds = Subset(train_dataset, train_indices)
+        val_ds = Subset(eval_dataset, val_indices)
+        test_ds = val_ds
+        class_names = train_dataset.classes
     elif dataset_name.lower() == "cifar10":
-        train_ds = datasets.CIFAR10(root=root, train=True, download=True, transform=build_transforms(image_size, train=True))
-        val_ds = datasets.CIFAR10(root=root, train=False, download=True, transform=build_transforms(image_size, train=False))
+        train_dataset = datasets.CIFAR10(root=root, train=True, download=True, transform=build_transforms(image_size, train=True))
+        eval_train_dataset = datasets.CIFAR10(root=root, train=True, download=True, transform=build_transforms(image_size, train=False))
+        val_size = max(1, int(val_split * len(train_dataset)))
+        indices = torch.randperm(len(train_dataset), generator=torch.Generator().manual_seed(42)).tolist()
+        val_indices = indices[:val_size]
+        train_indices = indices[val_size:]
+        train_ds = Subset(train_dataset, train_indices)
+        val_ds = Subset(eval_train_dataset, val_indices)
+        test_ds = datasets.CIFAR10(root=root, train=False, download=True, transform=build_transforms(image_size, train=False))
         class_names = CIFAR10_CLASSES
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
-    return train_loader, val_loader, class_names
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
+    return train_loader, val_loader, test_loader, class_names

@@ -5,8 +5,9 @@ dataset:
   image_size: 32
   batch_size: 64
   num_workers: 2
+  val_split: 0.1
 training:
-  epochs: 5
+  epochs: 3
   learning_rate: 0.001
   weight_decay: 0.0001
   device: auto

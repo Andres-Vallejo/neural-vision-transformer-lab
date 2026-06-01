@@ -15,7 +15,7 @@ on:
       epochs:
         description: Number of epochs
         required: true
-        default: '1'
+        default: '3'
   push:
     branches: [ main ]
     paths:
@@ -40,7 +40,7 @@ jobs:
       - name: Train selected model
         run: |
           MODEL="${{ github.event.inputs.model || 'cnn' }}"
-          EPOCHS="${{ github.event.inputs.epochs || '1' }}"
+          EPOCHS="${{ github.event.inputs.epochs || '3' }}"
           python src/train.py --model "$MODEL" --epochs "$EPOCHS"
       - name: Evaluate classifier
         if: ${{ github.event.inputs.model != 'autoencoder' }}

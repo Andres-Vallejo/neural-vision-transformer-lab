@@ -67,7 +67,7 @@ def main():
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
     device = resolve_device(cfg["training"].get("device", "auto"))
-    train_loader, val_loader, class_names = get_dataloaders(**cfg["dataset"])
+    train_loader, val_loader, _, class_names = get_dataloaders(**cfg["dataset"])
     model_cfg = cfg["models"][args.model]
     model = build_model(args.model, model_cfg, num_classes=len(class_names)).to(device)
     autoencoder = args.model == "autoencoder"

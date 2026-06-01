@@ -16,13 +16,13 @@ def main():
     args = parser.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text())
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    _, val_loader, class_names = get_dataloaders(**cfg["dataset"])
+    _, _, test_loader, class_names = get_dataloaders(**cfg["dataset"])
     model = build_model(args.model, cfg["models"][args.model], num_classes=len(class_names)).to(device)
     checkpoint = torch.load(Path(cfg["outputs"]["checkpoint_dir"]) / f"{args.model}_best.pt", map_location=device)
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
     y_true, y_pred = [], []
-    for images, labels in val_loader:
+    for images, labels in test_loader:
         logits = model(images.to(device))
         y_true.extend(labels.tolist())
         y_pred.extend(logits.argmax(1).cpu().tolist())
